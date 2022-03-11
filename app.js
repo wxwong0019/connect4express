@@ -1,41 +1,28 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var http = require('http')
+var socketio = require('socket.io')
 
 var app = express();
+const server = http.createServer(app)
+const io = socketio(server, {
+  cors: {
+    origin : ['http://localhost:3001']
+  }
+})
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+io.on('connection', client => {
+  console.log(client.id)
+  client.on("from-client", (currMove, currPlayer)=>{
+    client.broadcast.emit('opponent-move', currMove, currPlayer)
+  })
+  client.on("initial-color", (color) => {
+    client.broadcast.emit("set-initial-color", color)
+  })
+})
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+server.listen(process.env.PORT||8000)
 
 module.exports = app;
+
